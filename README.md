@@ -1,6 +1,11 @@
 # Python implementation of bibtext to cff citation file converter
 Convert bibtex citation files to cff file for compatibility with github citations
 
+## Installation:
+- `pip install bibtexparser` 
+
+
+
 ## Alternatives:
 Given a bibtex file `cite_source.bib` that we want to convert to `cite_target.cff`. 
 

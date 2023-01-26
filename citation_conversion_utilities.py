@@ -28,6 +28,13 @@ class Citation():
                 self.info_dict[key] = bib_info[key]
             else:
                 self.info_dict[key] = 'N/A'
+
+        if 'pages' in self.info_dict.keys():
+            ## Expected format: 'start--stop'
+            split_pages = self.info_dict['pages'].split('--')
+            assert len(split_pages) == 2, 'pages not expected format'
+            self.info_dict['start'] = int(split_pages[0])
+            self.info_dict['end'] = int(split_pages[1])
         
         ## Author info 
         if 'author' in bib_info.keys():
@@ -39,8 +46,8 @@ class Citation():
                 assert len(author_name.split(',')) == 2, f'More than 1 comma (,) in {author_name}'
                 author_dict[ind] = {}
                 author_dict[ind]['full_name'] = author_name
-                author_dict[ind]['first_name'] = author_name.split(',')[0]
-                author_dict[ind]['last_name'] = author_name.split(',')[1]
+                author_dict[ind]['first_name'] = author_name.split(',')[1]
+                author_dict[ind]['last_name'] = author_name.split(',')[0]
             self.info_dict['author_dict'] = author_dict
             # print(author_list)
         else:
@@ -48,8 +55,8 @@ class Citation():
        
         self.bibtex_provided = True 
 
-    def input_repo_info(self, repo_url=None, message=None, repo_doi=None, 
-                        authors=None):
+    def input_repo_info(self, repo_url, repo_doi=None, authors_repo=None,
+                        message='If you use this software, please cite it as below.'):
         if repo_url is not None:
             assert type(repo_url) == str, type(repo_url)
             self.info_dict['repo_url'] = repo_url
@@ -66,10 +73,32 @@ class Citation():
         else:
             self.info_dict['repo_doi'] = 'N/A'
 
-        if authors is not None:  # assume authors of repo are different than authors of bibtex file 
+        if authors_repo is not None:  # assume authors of repo are different than authors of bibtex file 
             assert False, 'Different authors specified for repo -- no yet implemented.!'
 
         self.repo_provided = True 
+
+    def add_orcid(self):
+        '''Interactive function for adding orcid'''
+
+        assert 'author_dict' in self.info_dict.keys(), 'first define authors'
+
+        ad = self.info_dict['author_dict']
+        for i_author, author_name_dict in ad.items():
+            if 'orcid' not in author_name_dict.keys():
+                orcid = input(f'Please type orcid ID or url of {author_name_dict["full_name"]}. If no orcid, leave empty and hit enter.')
+                if orcid != '':
+                    assert type(orcid) == str 
+                    if len(orcid) == 19: 
+                        orcid_url = f'https://orcid.org/{orcid}'
+                    elif len(orcid) == 37 and orcid[:18] == 'https://orcid.org/':
+                        orcid_url = orcid 
+                    elif len(orcid) == 41 and orcid[:22] == 'https://www.orcid.org/':
+                        orcid_url = orcid
+                    else:
+                        print(f'Orcid {orcid} for {author_name_dict["full_name"]} not recognised as an Orcid format..')
+                        continue 
+                    author_name_dict['orcid'] = orcid_url
 
     def prep_info_for_export(self):
         '''Run some checks and make data in order'''
@@ -121,12 +150,14 @@ class Citation():
         with open(filename, 'a') as f:  # add 
             f.write(f'{id}authors:\n')
             for i_author, author_name_dict in ad.items():
-                f.write(f'{id}  - name-suffix: "N/A"\n')
+                # f.write(f'{id}  - name-suffix: "N/A"\n')
+                f.write(f'{id}  - family-names: "{author_name_dict["last_name"]}"\n')
                 f.write(f'{id}    given-names: "{author_name_dict["first_name"]}"\n')
-                f.write(f'{id}    name-particle: "N/A"\n')
-                f.write(f'{id}    family-names: "{author_name_dict["last_name"]}"\n')
+                # f.write(f'{id}    name-particle: "N/A"\n')
+                if 'orcid' in author_name_dict.keys():
+                    f.write(f'{id}    orcid: "{author_name_dict["orcid"]}"\n')
 
-    def export_to_cff(self, cff_version="1.2.0", filename='tmp.cff'):
+    def export_to_cff(self, cff_version="1.2.0", filename='CITATION.cff'):
         
         assert type(cff_version) == str, type(cff_version)
         if filename[-4:] != '.cff':
@@ -147,7 +178,8 @@ class Citation():
             if 'publisher' in self.info_dict:
                 f.write('  publisher:\n')
                 f.write(f'    name: "{self.info_dict["publisher"]}"\n')
-            for key in ['issue', 'doi', 'date-released', 'volume', 'journal', 'title']:
+            for key in ['doi', 'url', 'date-released', 'issue', 'volume', 'journal', 'title', 
+                        'booktitle', 'editor', 'series', 'publisher', 'start', 'end']:
                 if key in self.info_dict.keys():
                     f.write(f'  {key}: "{self.info_dict[key]}"\n')
             

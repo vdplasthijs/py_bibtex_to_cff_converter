@@ -15,7 +15,8 @@ class Citation():
 
 
     def load_bibtex_file(self, filepath):
-        with open('example_bib_files/pmlr-v199-plas22a.bib') as bf:
+        '''Load bibtex file from path, and save data in self.info_dict'''
+        with open(filepath) as bf:
             bib_db = bibtexparser.load(bf)
 
         assert len(bib_db.entries) == 1, 'more than 1 entries in bib tex file, give ind or something'
@@ -26,8 +27,6 @@ class Citation():
                     'volume', 'series', 'issue', 'editor', 'publisher', 'url', 'doi', 'abstract']:
             if key in bib_info.keys():
                 self.info_dict[key] = bib_info[key]
-            else:
-                self.info_dict[key] = 'N/A'
 
         if 'pages' in self.info_dict.keys():
             ## Expected format: 'start--stop'
@@ -49,14 +48,14 @@ class Citation():
                 author_dict[ind]['first_name'] = author_name.split(',')[1]
                 author_dict[ind]['last_name'] = author_name.split(',')[0]
             self.info_dict['author_dict'] = author_dict
-            # print(author_list)
         else:
             self.info_dict['author'] = None
        
         self.bibtex_provided = True 
 
-    def input_repo_info(self, repo_url, repo_doi=None, authors_repo=None,
+    def input_repo_info(self, repo_url, repo_doi=None, authors_repo=None, version=None,
                         message='If you use this software, please cite it as below.'):
+        '''Provide additional info about the repository'''
         if repo_url is not None:
             assert type(repo_url) == str, type(repo_url)
             self.info_dict['repo_url'] = repo_url
@@ -70,8 +69,10 @@ class Citation():
         if repo_doi is not None:
             assert type(repo_doi) == str, type(repo_doi)
             self.info_dict['repo_doi'] = repo_doi
-        else:
-            self.info_dict['repo_doi'] = 'N/A'
+        if version is not None:
+            if type(version) != str:
+                version = str(version)
+            self.info_dict['repo_version'] = version
 
         if authors_repo is not None:  # assume authors of repo are different than authors of bibtex file 
             assert False, 'Different authors specified for repo -- no yet implemented.!'
@@ -89,11 +90,11 @@ class Citation():
                 orcid = input(f'Please type orcid ID or url of {author_name_dict["full_name"]}. If no orcid, leave empty and hit enter.')
                 if orcid != '':
                     assert type(orcid) == str 
-                    if len(orcid) == 19: 
+                    if len(orcid) == 19:  # just number
                         orcid_url = f'https://orcid.org/{orcid}'
-                    elif len(orcid) == 37 and orcid[:18] == 'https://orcid.org/':
+                    elif len(orcid) == 37 and orcid[:18] == 'https://orcid.org/':  # url
                         orcid_url = orcid 
-                    elif len(orcid) == 41 and orcid[:22] == 'https://www.orcid.org/':
+                    elif len(orcid) == 41 and orcid[:22] == 'https://www.orcid.org/':  # url with www.
                         orcid_url = orcid
                     else:
                         print(f'Orcid {orcid} for {author_name_dict["full_name"]} not recognised as an Orcid format..')
@@ -106,6 +107,8 @@ class Citation():
         assert self.repo_provided, 'repo not yet provided'
 
         idk = self.info_dict.keys()
+
+        ## Prep date:
         find_date = True
         construct_date = False
         while find_date:
@@ -139,7 +142,21 @@ class Citation():
         if construct_date:
             self.info_dict['date-released'] = f'{year}-{str(month).zfill(2)}-{str(day).zfill(2)}'
 
+        ## Bibtex type:
+        if 'ENTRYTYPE' in self.info_dict.keys():
+            type_mapping_bib_to_cff = {'article': 'article', 'book': 'book', 'booklet': 'pamphlet',
+                                       'inproceedings': 'conference-paper', 'proceedings': 'proceedings',
+                                       'misc': 'generic', 'manual': 'manual', 'software': 'software', 
+                                       'techreport': 'report', 'unpublished': 'unpublished'}  #https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-citation-files
+            self.info_dict['cff_type'] = type_mapping_bib_to_cff[self.info_dict['ENTRYTYPE']]
+
+        ## Journal
+        if 'journal' not in self.info_dict.keys():
+            if 'series' in self.info_dict.keys():
+                self.info_dict['journal'] = self.info_dict['series']
+
     def add_author_names_to_cff(self, filename, indent_n_spaces=0):
+        '''Add list of all author names to cff file'''
         assert type(indent_n_spaces) == int and indent_n_spaces >= 0
         id = ' ' * indent_n_spaces
         assert 'author_dict' in self.info_dict
@@ -158,8 +175,9 @@ class Citation():
                     f.write(f'{id}    orcid: "{author_name_dict["orcid"]}"\n')
 
     def export_to_cff(self, cff_version="1.2.0", filename='CITATION.cff'):
-        
+        '''Export citation info to a cff file.'''
         assert type(cff_version) == str, type(cff_version)
+        self.prep_info_for_export()
         if filename[-4:] != '.cff':
             filename = filename + '.cff'
 
@@ -167,14 +185,24 @@ class Citation():
             f.write(f'date-released: "{self.info_dict["date-released"]}"\n')
             f.write(f'repository-code: "{self.info_dict["repo_url"]}"\n')
             f.write(f'message: "{self.info_dict["message"]}"\n')
-            f.write(f'doi: "{self.info_dict["repo_doi"]}"\n')
+            ## Prioritise paper doi over repo doi:
+            if 'doi' in self.info_dict.keys():
+                f.write(f'doi: "{self.info_dict["doi"]}\n')
+            elif 'repo_doi' in self.info_dict.keys():
+                f.write(f'doi: "{self.info_dict["repo_doi"]}"\n')
             f.write(f'title: "{self.info_dict["title"]}"\n')
             f.write(f'cff-version: "{cff_version}"\n')
+            if 'repo_version' in self.info_dict.keys():
+                f.write(f'version: {self.info_dict["repo_version"]}\n')
 
         self.add_author_names_to_cff(filename=filename, indent_n_spaces=0)
 
         with open(filename, 'a') as f:
             f.write('preferred-citation:\n')
+            if 'cff_type' in self.info_dict.keys():
+                f.write(f'  type: "{self.info_dict["cff_type"]}"\n')
+            else:
+                f.write('  type: "generic"\n')
             if 'publisher' in self.info_dict:
                 f.write('  publisher:\n')
                 f.write(f'    name: "{self.info_dict["publisher"]}"\n')
@@ -185,10 +213,4 @@ class Citation():
             
         self.add_author_names_to_cff(filename=filename, indent_n_spaces=2)
 
-        with open(filename, 'a') as f:
-            if 'ENTRYTYPE' in self.info_dict.keys():
-                f.write(f'  type: "{self.info_dict["ENTRYTYPE"]}"\n')
-            else:
-                f.write('  type: "generic"\n')
-
-        print(f'Saved to {filename} in {os.getcwd()}/')
+        print(f'Saved as {filename}')

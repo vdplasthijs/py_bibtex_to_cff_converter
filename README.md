@@ -4,7 +4,14 @@ Convert bibtex citation files to cff file for compatibility with github citation
 ## Installation:
 - `pip install bibtexparser` 
 
+## How to use:
+- Use functions from `citation_conversion_utilities.py`. 
+- Example of how to use this in `Example conversion.ipynb`. 
 
+## Info about cff files:
+- Github explainer & examples: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-citation-files
+- Primer on cff files & create from scratch online: https://citation-file-format.github.io/
+- Overview of cff software: https://github.com/citation-file-format/citation-file-format/blob/main/README.md#tools-to-work-with-citationcff-files-wrench
 
 ## Alternatives:
 Given a bibtex file `cite_source.bib` that we want to convert to `cite_target.cff`. 

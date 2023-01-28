@@ -7,6 +7,7 @@ Convert bibtex citation files to cff file for compatibility with github citation
 ## How to use:
 - Use functions from `citation_conversion_utilities.py`. 
 - Example of how to use this in `Example conversion.ipynb`. 
+- Recommended to also include the original `.bib` file in the repo; Github's cff to bib conversion is not perfect.
 
 ## Info about cff files:
 - Github explainer & examples: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-citation-files

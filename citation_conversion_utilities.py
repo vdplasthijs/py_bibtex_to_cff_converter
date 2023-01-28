@@ -23,7 +23,7 @@ class Citation():
         bib_info = bib_db.entries[0]
         assert type(bib_info) == dict 
 
-        for key in ['ENTRYTYPE', 'title', 'booktitle', 'pages', 'year', 'month', 'day',
+        for key in ['ENTRYTYPE', 'title', 'booktitle', 'pages', 'year', 'month', 'day', 'journal',
                     'volume', 'series', 'issue', 'editor', 'publisher', 'url', 'doi', 'abstract']:
             if key in bib_info.keys():
                 self.info_dict[key] = bib_info[key]
@@ -31,9 +31,13 @@ class Citation():
         if 'pages' in self.info_dict.keys():
             ## Expected format: 'start--stop'
             split_pages = self.info_dict['pages'].split('--')
-            assert len(split_pages) == 2, 'pages not expected format'
-            self.info_dict['start'] = int(split_pages[0])
-            self.info_dict['end'] = int(split_pages[1])
+            if len(split_pages) == 2:
+                self.info_dict['start'] = int(split_pages[0])
+                self.info_dict['end'] = int(split_pages[1])
+            elif len(split_pages) == 1:
+                self.info_dict['start'] = split_pages[0]
+            else:
+                assert False, 'pages does not have expected format'
         
         ## Author info 
         if 'author' in bib_info.keys():
@@ -138,6 +142,8 @@ class Citation():
                 find_date = False 
             else:
                 day = 1 
+                find_date = False
+
 
         if construct_date:
             self.info_dict['date-released'] = f'{year}-{str(month).zfill(2)}-{str(day).zfill(2)}'
@@ -187,13 +193,13 @@ class Citation():
             f.write(f'message: "{self.info_dict["message"]}"\n')
             ## Prioritise paper doi over repo doi:
             if 'doi' in self.info_dict.keys():
-                f.write(f'doi: "{self.info_dict["doi"]}\n')
+                f.write(f'doi: "{self.info_dict["doi"]}"\n')
             elif 'repo_doi' in self.info_dict.keys():
                 f.write(f'doi: "{self.info_dict["repo_doi"]}"\n')
             f.write(f'title: "{self.info_dict["title"]}"\n')
             f.write(f'cff-version: "{cff_version}"\n')
             if 'repo_version' in self.info_dict.keys():
-                f.write(f'version: {self.info_dict["repo_version"]}\n')
+                f.write(f'version: "{self.info_dict["repo_version"]}"\n')
 
         self.add_author_names_to_cff(filename=filename, indent_n_spaces=0)
 

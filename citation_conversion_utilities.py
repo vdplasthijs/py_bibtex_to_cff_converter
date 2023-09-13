@@ -54,7 +54,7 @@ class Citation():
             self.info_dict['author_dict'] = author_dict
         else:
             self.info_dict['author'] = None
-       
+
         self.bibtex_provided = True 
 
     def input_repo_info(self, repo_url, repo_doi=None, authors_repo=None, version=None,
@@ -161,6 +161,12 @@ class Citation():
             if 'series' in self.info_dict.keys():
                 self.info_dict['journal'] = self.info_dict['series']
 
+        ## To copy booktitle (ignored by github) as conference.name
+        if 'cff_type' in self.info_dict.keys() and self.info_dict['cff_type'] == 'conference-paper':
+            if 'booktitle' in self.info_dict.keys():
+                if 'conference' not in self.info_dict.keys():
+                    self.info_dict['conference'] = self.info_dict['booktitle']
+
     def add_author_names_to_cff(self, filename, indent_n_spaces=0):
         '''Add list of all author names to cff file'''
         assert type(indent_n_spaces) == int and indent_n_spaces >= 0
@@ -212,6 +218,9 @@ class Citation():
             if 'publisher' in self.info_dict:
                 f.write('  publisher:\n')
                 f.write(f'    name: "{self.info_dict["publisher"]}"\n')
+            if 'conference' in self.info_dict:
+                f.write('  conference:\n')
+                f.write(f'    name: "{self.info_dict["conference"]}"\n')
             for key in ['doi', 'url', 'date-released', 'issue', 'volume', 'journal', 'title', 
                         'booktitle', 'editor', 'series', 'publisher', 'start', 'end']:
                 if key in self.info_dict.keys():

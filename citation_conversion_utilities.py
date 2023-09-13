@@ -16,21 +16,23 @@ class Citation():
 
     def load_bibtex_file(self, filepath):
         '''Load bibtex file from path, and save data in self.info_dict'''
-        with open(filepath) as bf:
-            bib_db = bibtexparser.load(bf)
+        layers = [bibtexparser.middlewares.LatexDecodingMiddleware()]
+        library = bibtexparser.parse_file(filepath, append_middleware=layers)
 
-        assert len(bib_db.entries) == 1, 'more than 1 entries in bib tex file, give ind or something'
-        bib_info = bib_db.entries[0]
-        assert type(bib_info) == dict 
+        assert len(library.entries) == 1, 'more than 1 entries in bib tex file, give ind or something'
+        bib_info = library.entries[0]
+        assert type(bib_info) == bibtexparser.model.Entry
 
-        for key in ['ENTRYTYPE', 'title', 'booktitle', 'pages', 'year', 'month', 'day', 'journal',
+        bib_keys = bib_info.fields_dict.keys()
+        self.info_dict['ENTRYTYPE'] = bib_info.entry_type
+        for key in ['title', 'booktitle', 'pages', 'year', 'month', 'day', 'journal',
                     'volume', 'series', 'issue', 'editor', 'publisher', 'url', 'doi', 'abstract']:
-            if key in bib_info.keys():
+            if key in bib_keys:
                 self.info_dict[key] = bib_info[key]
 
         if 'pages' in self.info_dict.keys():
             ## Expected format: 'start--stop'
-            split_pages = self.info_dict['pages'].split('--')
+            split_pages = self.info_dict['pages'].split('–')
             if len(split_pages) == 2:
                 self.info_dict['start'] = int(split_pages[0])
                 self.info_dict['end'] = int(split_pages[1])
@@ -40,7 +42,7 @@ class Citation():
                 assert False, 'pages does not have expected format'
         
         ## Author info 
-        if 'author' in bib_info.keys():
+        if 'author' in bib_keys:
             author_list = bib_info['author'].split(' and ')
             self.info_dict['n_authors'] = len(author_list)
             author_dict = {}

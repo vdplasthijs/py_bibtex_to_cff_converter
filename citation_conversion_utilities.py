@@ -60,6 +60,7 @@ class Citation():
         self.bibtex_provided = True 
 
     def input_repo_info(self, repo_url, repo_doi=None, authors_repo=None, version=None,
+                        orcid_map=None,
                         message='If you use this software, please cite it as below.'):
         '''Provide additional info about the repository'''
         if repo_url is not None:
@@ -82,6 +83,12 @@ class Citation():
 
         if authors_repo is not None:  # assume authors of repo are different than authors of bibtex file 
             assert False, 'Different authors specified for repo -- no yet implemented.!'
+
+        if orcid_map is not None:
+            for author in self.info_dict['author_dict'].values():
+                key = (author['first_name'], author['last_name'])
+                if key in orcid_map:
+                    author['orcid'] = 'https://orcid.org/' + orcid_map[key]
 
         self.repo_provided = True 
 

@@ -50,9 +50,9 @@ class Citation():
                 assert ',' in author_name, f'No comma (,) in name {author_name}'
                 assert len(author_name.split(',')) == 2, f'More than 1 comma (,) in {author_name}'
                 author_dict[ind] = {}
-                author_dict[ind]['full_name'] = author_name
-                author_dict[ind]['first_name'] = author_name.split(',')[1]
-                author_dict[ind]['last_name'] = author_name.split(',')[0]
+                author_dict[ind]['full_name'] = author_name.strip()
+                author_dict[ind]['first_name'] = author_name.split(',')[1].strip()
+                author_dict[ind]['last_name'] = author_name.split(',')[0].strip()
             self.info_dict['author_dict'] = author_dict
         else:
             self.info_dict['author'] = None

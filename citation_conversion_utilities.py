@@ -16,21 +16,23 @@ class Citation():
 
     def load_bibtex_file(self, filepath):
         '''Load bibtex file from path, and save data in self.info_dict'''
-        with open(filepath) as bf:
-            bib_db = bibtexparser.load(bf)
+        layers = [bibtexparser.middlewares.LatexDecodingMiddleware()]
+        library = bibtexparser.parse_file(filepath, append_middleware=layers)
 
-        assert len(bib_db.entries) == 1, 'more than 1 entries in bib tex file, give ind or something'
-        bib_info = bib_db.entries[0]
-        assert type(bib_info) == dict 
+        assert len(library.entries) == 1, 'more than 1 entries in bib tex file, give ind or something'
+        bib_info = library.entries[0]
+        assert type(bib_info) == bibtexparser.model.Entry
 
-        for key in ['ENTRYTYPE', 'title', 'booktitle', 'pages', 'year', 'month', 'day', 'journal',
+        bib_keys = bib_info.fields_dict.keys()
+        self.info_dict['ENTRYTYPE'] = bib_info.entry_type
+        for key in ['title', 'booktitle', 'pages', 'year', 'month', 'day', 'journal',
                     'volume', 'series', 'issue', 'editor', 'publisher', 'url', 'doi', 'abstract']:
-            if key in bib_info.keys():
+            if key in bib_keys:
                 self.info_dict[key] = bib_info[key]
 
         if 'pages' in self.info_dict.keys():
             ## Expected format: 'start--stop'
-            split_pages = self.info_dict['pages'].split('--')
+            split_pages = self.info_dict['pages'].split('–')
             if len(split_pages) == 2:
                 self.info_dict['start'] = int(split_pages[0])
                 self.info_dict['end'] = int(split_pages[1])
@@ -40,7 +42,7 @@ class Citation():
                 assert False, 'pages does not have expected format'
         
         ## Author info 
-        if 'author' in bib_info.keys():
+        if 'author' in bib_keys:
             author_list = bib_info['author'].split(' and ')
             self.info_dict['n_authors'] = len(author_list)
             author_dict = {}
@@ -48,16 +50,17 @@ class Citation():
                 assert ',' in author_name, f'No comma (,) in name {author_name}'
                 assert len(author_name.split(',')) == 2, f'More than 1 comma (,) in {author_name}'
                 author_dict[ind] = {}
-                author_dict[ind]['full_name'] = author_name
-                author_dict[ind]['first_name'] = author_name.split(',')[1]
-                author_dict[ind]['last_name'] = author_name.split(',')[0]
+                author_dict[ind]['full_name'] = author_name.strip()
+                author_dict[ind]['first_name'] = author_name.split(',')[1].strip()
+                author_dict[ind]['last_name'] = author_name.split(',')[0].strip()
             self.info_dict['author_dict'] = author_dict
         else:
             self.info_dict['author'] = None
-       
+
         self.bibtex_provided = True 
 
     def input_repo_info(self, repo_url, repo_doi=None, authors_repo=None, version=None,
+                        orcid_map=None,
                         message='If you use this software, please cite it as below.'):
         '''Provide additional info about the repository'''
         if repo_url is not None:
@@ -80,6 +83,12 @@ class Citation():
 
         if authors_repo is not None:  # assume authors of repo are different than authors of bibtex file 
             assert False, 'Different authors specified for repo -- no yet implemented.!'
+
+        if orcid_map is not None:
+            for author in self.info_dict['author_dict'].values():
+                key = (author['first_name'], author['last_name'])
+                if key in orcid_map:
+                    author['orcid'] = 'https://orcid.org/' + orcid_map[key]
 
         self.repo_provided = True 
 
@@ -161,6 +170,12 @@ class Citation():
             if 'series' in self.info_dict.keys():
                 self.info_dict['journal'] = self.info_dict['series']
 
+        ## To copy booktitle (ignored by github) as conference.name
+        if 'cff_type' in self.info_dict.keys() and self.info_dict['cff_type'] == 'conference-paper':
+            if 'booktitle' in self.info_dict.keys():
+                if 'conference' not in self.info_dict.keys():
+                    self.info_dict['conference'] = self.info_dict['booktitle']
+
     def add_author_names_to_cff(self, filename, indent_n_spaces=0):
         '''Add list of all author names to cff file'''
         assert type(indent_n_spaces) == int and indent_n_spaces >= 0
@@ -212,6 +227,9 @@ class Citation():
             if 'publisher' in self.info_dict:
                 f.write('  publisher:\n')
                 f.write(f'    name: "{self.info_dict["publisher"]}"\n')
+            if 'conference' in self.info_dict:
+                f.write('  conference:\n')
+                f.write(f'    name: "{self.info_dict["conference"]}"\n')
             for key in ['doi', 'url', 'date-released', 'issue', 'volume', 'journal', 'title', 
                         'booktitle', 'editor', 'series', 'publisher', 'start', 'end']:
                 if key in self.info_dict.keys():

@@ -2,7 +2,7 @@
 Convert bibtex citation files to cff file for compatibility with github citations
 
 ## Installation:
-- `pip install bibtexparser` 
+- `pip install bibtexparser==2.0.0b2`
 
 ## How to use:
 - Use functions from `citation_conversion_utilities.py`. 
